@@ -55,7 +55,16 @@ class ZtmDataExtractor:
             URL = "https://api.um.warszawa.pl/api/action/public_transport_routes/"
             return connector.get(URL)
 
-        def get_longest_route(routes):
+        def get_longest_basic_route(routes):
+            def get_basic_if_available(routes):
+                basic_routes = {key: item for key, item in routes.items() if key.startswith("TP")}
+                if len(basic_routes) > 0:
+                    return basic_routes
+                else:
+                    return routes
+                    
+            routes = get_basic_if_available(routes)
+            
             max_length = max([len(route) for route in routes.values()])
             longest_route = {key: value for key, value in routes.items() if len(value) == max_length}
 
@@ -72,7 +81,7 @@ class ZtmDataExtractor:
         for line_id, routes in lines_and_destinations.items():
             id = line_id
             
-            name, destinations = get_longest_route(routes)
+            name, destinations = get_longest_basic_route(routes)
             
             for key, item in sorted(destinations.items(), key=lambda x: int(x[0])):
                 self.destinations.append(
