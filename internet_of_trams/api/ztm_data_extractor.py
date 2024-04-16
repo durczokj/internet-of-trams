@@ -4,12 +4,29 @@ from datetime import datetime
 import pytz
 
 
+def parse_appearance(appearance_of_vehicle):
+    return Appearance(
+        vehicle_id = int(appearance_of_vehicle["VehicleNumber"])
+        ,timestamp = datetime.strptime(appearance_of_vehicle["Time"], '%Y-%m-%d %H:%M:%S')
+        ,_extraction_timestamp = datetime.strptime(appearance_of_vehicle["_extraction_timestamp"], '%Y-%m-%d %H:%M:%S')
+        ,latitude = float(appearance_of_vehicle["Lat"])
+        ,longitude = float(appearance_of_vehicle["Lon"]))
+    
+def parse_vehicle(appearance_of_vehicle):
+    return Vehicle(
+                id = int(appearance_of_vehicle["VehicleNumber"])
+                ,type = "tram"
+                ,line_id = appearance_of_vehicle["Lines"]
+                ,brigade = int(appearance_of_vehicle["Lines"])
+                ,_extraction_timestamp = datetime.strptime(appearance_of_vehicle["_extraction_timestamp"], '%Y-%m-%d %H:%M:%S'))
+
+
 class ZtmDataExtractor:
     def __init__(self, api_key):
         self.__connector = ZtmConnector(api_key)
-    
-    def get_vehicles_and_appearances(self, lines):
-        def extract_appearances_of_vehicles(vehicle_type, line, connector):
+        
+    def extract_appearances_of_vehicles_for_lines(self, lines):
+        def extract_appearances_of_vehicles_for_line(vehicle_type, line, connector):
             URL = "https://api.um.warszawa.pl/api/action/busestrams_get/"
 
             type_mapping = {"bus": 1, "tram": 2}
@@ -22,32 +39,42 @@ class ZtmDataExtractor:
                 ,"line": line
             }
             
-            return connector.get(URL, params)
-
+            appearances_of_vehicles_for_line = connector.get(URL, params)
+            for aov in appearances_of_vehicles_for_line:
+                aov["_extraction_timestamp"] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            
+            return appearances_of_vehicles_for_line
+        
         VEHICLE_TYPE = "tram"
         
         appearances_of_vehicles = []
         
         for line in lines:
-            appearances_of_vehicles += extract_appearances_of_vehicles(VEHICLE_TYPE, line, self.__connector)
+            appearances_of_vehicles += extract_appearances_of_vehicles_for_line(VEHICLE_TYPE, line, self.__connector)
             
-        self.vehicles = []
-        self.appearances = []
-
-        for aov in appearances_of_vehicles:
-            self.vehicles.append(
-                Vehicle(
-                    id = int(aov["VehicleNumber"])
-                    ,type = "tram"
-                    ,line_id = aov["Lines"]
-                    ,brigade = int(aov["Lines"])))
-
-            self.appearances.append(
-                Appearance(
-                    vehicle_id = int(aov["VehicleNumber"])
-                    ,timestamp = datetime.strptime(aov["Time"], '%Y-%m-%d %H:%M:%S')
-                    ,latitude = float(aov["Lat"])
-                    ,longitude = float(aov["Lon"])))
+        return appearances_of_vehicles
+    
+    def get_vehicles_and_appearances(self, lines):
+        def parse_appearances(appearances_of_vehicles):
+            appearances = []
+                
+            for aov in appearances_of_vehicles:
+                appearances.append(parse_appearance(aov))
+                
+            return appearances
+        
+        def parse_vehicles(appearances_of_vehicles):
+            vehicles = []
+                
+            for aov in appearances_of_vehicles:
+                vehicles.append(parse_vehicle(aov))
+                
+            return vehicles
+        
+        appearances_of_vehicles = self.extract_appearances_of_vehicles_for_lines(lines)
+            
+        self.vehicles = parse_vehicles(appearances_of_vehicles)
+        self.appearances = parse_appearances(appearances_of_vehicles)
         
             
     def get_lines_and_destinations(self):

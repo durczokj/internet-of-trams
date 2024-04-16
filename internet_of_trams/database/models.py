@@ -24,15 +24,20 @@ class Vehicle(Model):
     type = fields.CharField(max_length=255)
     line = fields.ForeignKeyField("models.Line", related_name = "vehicles")
     brigade = fields.IntField()
+    _extraction_timestamp = fields.DatetimeField()
+
+    class Meta:
+        unique_together = (("id", "_extraction_timestamp"),)
 
 class Appearance(Model):
     vehicle = fields.ForeignKeyField("models.Vehicle", related_name="appearances")
-    timestamp = fields.DatetimeField()
     longitude = fields.FloatField()
     latitude = fields.FloatField()
+    timestamp = fields.DatetimeField()
+    _extraction_timestamp = fields.DatetimeField()
 
     class Meta:
-        unique_together = (("vehicle", "timestamp"),)
+        unique_together = (("vehicle", "_extraction_timestamp"),)
 
 class Destination(Model):
     line = fields.ForeignKeyField("models.Line", related_name = "destinations")

@@ -6,14 +6,15 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '..', '..', '..')))
 from internet_of_trams.api.ztm_data_extractor import ZtmDataExtractor
 from internet_of_trams.database.models import Stop, Pole
+from internet_of_trams.utils.get_config import get_config
 
 
-async def manage_stops_and_poles():
+async def manage_stops_and_poles(database_password, api_key):
     await Tortoise.init(
-        db_url="mysql://root:my-secret-pw@127.0.0.1:3306/internet_of_trams"
+        db_url=f"mysql://root:{database_password}@127.0.0.1:3306/internet_of_trams"
         ,modules={"models": ["internet_of_trams.database.models"]})
     
-    iot = ZtmDataExtractor(api_key="12b8f222-5689-4177-9ac2-01ff1229c098")
+    iot = ZtmDataExtractor(api_key)
     iot.get_stops_and_poles()
     
     for stop in iot.stops:
@@ -36,4 +37,6 @@ async def manage_stops_and_poles():
             # Create a new record
             await pole.save()
 
-run_async(manage_stops_and_poles())
+if __name__ == "__main__":
+    config = get_config()
+    run_async(manage_stops_and_poles(config["DATABASE_PASSWORD"], config["API_KEY"]))

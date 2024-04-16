@@ -8,4 +8,5 @@ async def manage_product():
     
     await Tortoise.generate_schemas()
 
-run_async(manage_product())
+if __name__ == "__main__":
+    run_async(manage_product())
