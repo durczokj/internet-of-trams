@@ -4,3 +4,4 @@ cd opt/kafka_2.13-2.8.1/bin
 ls
 kafka-topics.sh --create --zookeeper zookeeper:2181 --replication-factor 1 --partitions 1 --topic quickstart
 kafka-console-producer.sh --topic quickstart --bootstrap-server localhost:9092
+pip freeze > requirements.txt

@@ -1,6 +1,4 @@
-import json
-import sys
-import os
+import os, json, sys, logging
 sys.path.append(os.path.abspath(os.path.join(__file__, '..', '..', '..')))
 from internet_of_trams.utils.get_config import get_config
 from internet_of_trams.database.models import *
@@ -43,12 +41,20 @@ async def register_incoming_appearances_of_vehicles(database_password, topic):
         ,modules={"models": ["internet_of_trams.database.models"]})
 
     consumer = KafkaConsumer(topic, auto_offset_reset='latest')
-    for msg in consumer:
-        appearance = parse_appearance(msg)
-        vehicle = parse_vehicle(msg)
-        await create_or_update_vehicle(vehicle)
-        await create_or_update_appearance(appearance)
+    
+    try:
+        for msg in consumer:
+            appearance = parse_appearance(msg)
+            vehicle = parse_vehicle(msg)
+            await create_or_update_vehicle(vehicle)
+            await create_or_update_appearance(appearance)
+    except KeyboardInterrupt:
+        logging.info("Consumer closing.")
+        consumer.close()
         
-if __name__ == "__main__":
+def main():
     config = get_config()
     run_async(register_incoming_appearances_of_vehicles(config["DATABASE_PASSWORD"], config["KAFKA_TOPIC"]))
+        
+if __name__ == "__main__":
+    main()
