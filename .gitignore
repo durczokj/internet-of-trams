@@ -1,0 +1,15 @@
+# Ignore Jupyter notebooks
+*.ipynb
+!demo.ipynb
+
+# Ignore checkpoint files
+.ipynb_checkpoints/
+
+# Notebook folder
+/notebook/*
+
+# Notebook folder
+*.DS_Store
+
+# Notebook folder
+commands.txt
