@@ -28,6 +28,9 @@ class ZtmConnector:
                 error_message = response_dict.get("error", "Unknown error occurred.")
                 raise DataRetrievalError(error_message)
             else:
-                return response_dict["result"]
+                if response_dict["result"] == "Błędna metoda lub parametry wywołania":
+                    raise DataRetrievalError(response_dict)
+                else:
+                    return response_dict["result"]
         else:
             raise UnexpectedZtmResponseError(response.text)

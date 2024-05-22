@@ -6,14 +6,15 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '..', '..', '..')))
 from internet_of_trams.api.ztm_data_extractor import ZtmDataExtractor
 from internet_of_trams.database.models import Line, Destination
+from internet_of_trams.utils.get_config import get_config
 
 
-async def manage_lines_and_destinations():
+async def manage_lines_and_destinations(database_host, database_port, database_password, api_key):
     await Tortoise.init(
-        db_url="mysql://root:my-secret-pw@127.0.0.1:3306/internet_of_trams"
+        db_url=f"mysql://root:{database_password}@{database_host}:{database_port}/internet_of_trams"
         ,modules={"models": ["internet_of_trams.database.models"]})
     
-    extractor = ZtmDataExtractor(api_key="12b8f222-5689-4177-9ac2-01ff1229c098")
+    extractor = ZtmDataExtractor(api_key)
     extractor.get_lines_and_destinations()
     
     for line in extractor.lines:
@@ -36,4 +37,6 @@ async def manage_lines_and_destinations():
             # Create a new record
             await destination.save()
 
-run_async(manage_lines_and_destinations())
+if __name__ == "__main__":
+    config = get_config()
+    run_async(manage_lines_and_destinations(config["DATABASE_HOST"], config["DATABASE_PORT"], config["DATABASE_PASSWORD"], config["API_KEY"]))
