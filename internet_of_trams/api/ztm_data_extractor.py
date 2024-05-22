@@ -1,8 +1,10 @@
 from internet_of_trams.api.ztm_connector import ZtmConnector
 from internet_of_trams.database.models import *
 from datetime import datetime
+import logging
 import pytz
 
+WARSAW_TZ = pytz.timezone('Europe/Warsaw')
 
 def parse_appearance(appearance_of_vehicle):
     return Appearance(
@@ -39,9 +41,14 @@ class ZtmDataExtractor:
                 ,"line": line
             }
             
-            appearances_of_vehicles_for_line = connector.get(URL, params)
+            try:
+                appearances_of_vehicles_for_line = connector.get(URL, params)
+            except Exception as e:
+                logging.warning(e)
+                return []
+            
             for aov in appearances_of_vehicles_for_line:
-                aov["_extraction_timestamp"] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                aov["_extraction_timestamp"] = datetime.now(WARSAW_TZ).strftime('%Y-%m-%d %H:%M:%S')
             
             return appearances_of_vehicles_for_line
         

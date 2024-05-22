@@ -8,11 +8,11 @@ from kafka import KafkaProducer
 import time
 
 
-def produce_appearances_of_vehicles(api_key, lines, topic):
+def produce_appearances_of_vehicles(api_key, lines, topic, kafka_host):
     extractor = ZtmDataExtractor(api_key)
 
     appearances_of_vehicles = extractor.extract_appearances_of_vehicles_for_lines(lines)
-    producer = KafkaProducer(bootstrap_servers='localhost:9092')
+    producer = KafkaProducer(bootstrap_servers=kafka_host)
 
     for aov in appearances_of_vehicles:
         producer.send(topic, value=bytes(json.dumps(aov), encoding="UTF-8"))
@@ -21,12 +21,12 @@ def produce_appearances_of_vehicles(api_key, lines, topic):
 
 def main():
     config = get_config()     
-    produce_appearances_of_vehicles(config["API_KEY"], config["LINES"], config["KAFKA_TOPIC"])
+    produce_appearances_of_vehicles(config["API_KEY"], config["LINES"], config["KAFKA_TOPIC"], config["KAFKA_HOST"])
 
 if __name__ == "__main__":
     try:
         while True:
             main()
-            time.sleep(30)
+            time.sleep(10)
     except KeyboardInterrupt:
         logging.info("Producer closing.")

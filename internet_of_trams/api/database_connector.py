@@ -9,11 +9,13 @@ class DatabaseConnector:
             username,
             password,
             host,
+            port,
             database):
             
             self.username = username
             self.password = password
             self.host = host
+            self.port = port
             self.database = database
     
     def __init__(
@@ -21,9 +23,10 @@ class DatabaseConnector:
         username,
         password,
         host,
+        port = 3306,
         database = None):
         
-        self.params = DatabaseConnector.Params(username, password, host, database)
+        self.params = DatabaseConnector.Params(username, password, host, port, database)
     
     @staticmethod
     def __parse_into_data_frame(cursor):

@@ -6,15 +6,17 @@ from internet_of_trams.utils.get_config import get_config
 from tortoise import Tortoise
 from models import *
 
-def register_schema(username, password, host):
-    connector = DatabaseConnector(username, password, host)
-    query = "CREATE SCHEMA IF NOT EXISTS internet_of_trams"
+def register_schema(username, password, host, port):
+    SCHEMA_NAME = "internet_of_trams"
+    
+    connector = DatabaseConnector(username, password, host, port)
+    query = f"CREATE SCHEMA IF NOT EXISTS {SCHEMA_NAME}"
     connector.execute(query)
 
 
-async def generate_tables(username, password, host):
+async def generate_tables(username, password, host, port):
     await Tortoise.init(
-        db_url= f"mysql://{username}:{password}@{host}:3306/internet_of_trams"
+        db_url= f"mysql://{username}:{password}@{host}:{port}/internet_of_trams"
         ,modules={"models": ["models"]})
     
     await Tortoise.generate_schemas()
@@ -22,8 +24,8 @@ async def generate_tables(username, password, host):
 async def main():
     config = get_config()
     
-    register_schema(config["DATABASE_USERNAME"], config["DATABASE_PASSWORD"], config["DATABASE_HOST"])
-    await generate_tables(config["DATABASE_USERNAME"], config["DATABASE_PASSWORD"], config["DATABASE_HOST"])
+    register_schema(config["DATABASE_USERNAME"], config["DATABASE_PASSWORD"], config["DATABASE_HOST"], config["DATABASE_PORT"])
+    await generate_tables(config["DATABASE_USERNAME"], config["DATABASE_PASSWORD"], config["DATABASE_HOST"], config["DATABASE_PORT"])
 
 if __name__ == "__main__":
     import asyncio

@@ -5,8 +5,6 @@ from dateutil.relativedelta import relativedelta
 from internet_of_trams.api.ztm_data_extractor import ZtmDataExtractor
 from tortoise import Tortoise
 from internet_of_trams.database.models import *
-from tortoise.expressions import Subquery
-from internet_of_trams.api.database_connector import DatabaseConnector
 import pytz 
 
 
@@ -24,8 +22,6 @@ COLOR_LIST = ['darkred',
               'darkblue',
               'beige',
               'red']
-
-WARSAW_COORDINATES = (52.2297, 21.0122)
 
 def get_popup_html(vehicle_id, line, timestamp):
     CSS = """
@@ -53,13 +49,18 @@ def get_color_mapping(lines):
         color_mapping[line] = COLOR_LIST[index]
     return color_mapping
 
-def get_marker(appearance_of_vehicle, color_mapping):
-    popup = get_popup_html(appearance_of_vehicle["id"], appearance_of_vehicle["line_id"], appearance_of_vehicle["timestamp"])
+def get_marker(appearance, vehicles, color_mapping):
+    latitude, longitude = appearance.latitude, appearance.longitude
+    vehicle_id = appearance.vehicle_id
+    line = [vehicle.line_id for vehicle in vehicles if vehicle.id == vehicle_id][0]
+    timestamp = appearance.timestamp
 
-    color = color_mapping.get(appearance_of_vehicle["line_id"], 'black')
+    popup = get_popup_html(vehicle_id, line, timestamp)
+
+    color = color_mapping.get(line, 'black')
 
     return folium.Marker(
-        location=[appearance_of_vehicle["latitude"], appearance_of_vehicle["longitude"]],
+        location=[latitude, longitude],
         popup=popup,
         icon=folium.Icon(color=color))
     
@@ -68,14 +69,14 @@ def get_poly_line(line_id, paths, color_mapping):
 
 class TramsDashboardJob:
     def __init__(self,
+                 ztm_api_key,
                  database_host,
                  database_port,
                  database_password):
+        self.__extractor = ZtmDataExtractor(api_key=ztm_api_key)
         self.__database_host = database_host
         self.__database_port = database_port
         self.__database_password = database_password
-        
-        self.__database_connector = DatabaseConnector(username = 'root', password = database_password, host = database_host, database="internet_of_trams")
     
     @staticmethod
     def filter_recent_appearances(appearances):
@@ -107,43 +108,11 @@ class TramsDashboardJob:
         self.destinations = await Destination.all()
         self.paths = await get_paths()
         
-    def get_appearances_of_vehicles(self, lines):
-        observation_cutoff = datetime.now() - relativedelta(minutes=5)
-        observation_cutoff_str = observation_cutoff.strftime("%Y%m%d%H%m%S")
-        extraction_cutoff = datetime.now() - relativedelta(minutes=2)
-        extraction_cutoff_str = extraction_cutoff.strftime("%Y%m%d%H%m%S")
+    def get_vehicles_and_appearances(self, lines):
+        self.__extractor.get_vehicles_and_appearances(lines = lines)
         
-        if len(lines) == 0:
-            return []
-            
-        lines_str = ", ".join(lines)
-        lines_str = f"({lines_str})"
-
-        query = f"""
-            SELECT 
-                v.id
-                ,v.line_id
-                ,v.type
-                ,v.brigade
-                ,a.longitude
-                ,a.latitude
-                ,a.timestamp
-                ,a._extraction_timestamp
-            FROM 
-                appearance a 
-            JOIN 
-                vehicle v 
-            ON 
-                a.vehicle_id=v.id 
-            WHERE 
-                a.timestamp > STR_TO_DATE({observation_cutoff_str}, '%Y%m%d%H%i%s')
-                AND a._extraction_timestamp > STR_TO_DATE({extraction_cutoff_str}, '%Y%m%d%H%i%s')
-                AND a._extraction_timestamp = (SELECT MAX(_extraction_timestamp) FROM appearance s WHERE a.vehicle_id = s.vehicle_id)
-                AND v.line_id IN {lines_str}
-            """
-
-        return self.__database_connector.execute(query).to_dict(orient="records")
-    
+        return self.__extractor.vehicles, self.__extractor.appearances
+        
     def get_map(self, lines, zoom=0, longitude_shift=0, latitude_shift=0):
         lines = [str(line) for line in lines]
         
@@ -156,14 +125,17 @@ class TramsDashboardJob:
         map_warsaw = folium.Map(location=(latitude, longitude), zoom_start=__zoom, min_zoom=__zoom, zoom_control=False)
         
         # Get vehicles and appearances
-        appearances_of_vehicles = self.get_appearances_of_vehicles(lines)
+        vehicles, appearances = self.get_vehicles_and_appearances(lines)
+        
+        # Filter appearances
+        recent_appearances = self.filter_recent_appearances(appearances)
         
         # Get color mapping for lines
         color_mapping = get_color_mapping(lines)
 
         # Crate a marker for each appearance
-        for aov in appearances_of_vehicles:
-            get_marker(aov, color_mapping).add_to(map_warsaw)
+        for appearance in recent_appearances:
+            get_marker(appearance, vehicles, color_mapping).add_to(map_warsaw)
 
         # Crate a poly-line for each line path
         for line_id in lines:
@@ -173,5 +145,4 @@ class TramsDashboardJob:
         return map_warsaw
     
     def get_map_html(self, lines, zoom=0, longitude_shift=0, latitude_shift=0):
-        map = self.get_map(lines, zoom, longitude_shift, latitude_shift)
-        return map.get_root().render()
+        return self.get_map(lines, zoom, longitude_shift, latitude_shift).get_root().render()

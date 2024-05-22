@@ -7,4 +7,8 @@ def get_config():
     with open(config_path) as config_file:
         config = yaml.safe_load(config_file)
         
+    for key in config.keys():
+        if os.getenv(key):
+            config[key] = os.getenv(key)
+        
     return config

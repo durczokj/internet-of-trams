@@ -9,9 +9,9 @@ from internet_of_trams.database.models import Stop, Pole
 from internet_of_trams.utils.get_config import get_config
 
 
-async def manage_stops_and_poles(database_password, api_key):
+async def manage_stops_and_poles(database_host, database_port, database_password, api_key):
     await Tortoise.init(
-        db_url=f"mysql://root:{database_password}@127.0.0.1:3306/internet_of_trams"
+        db_url=f"mysql://root:{database_password}@{database_host}:{database_port}/internet_of_trams"
         ,modules={"models": ["internet_of_trams.database.models"]})
     
     iot = ZtmDataExtractor(api_key)
@@ -39,4 +39,4 @@ async def manage_stops_and_poles(database_password, api_key):
 
 if __name__ == "__main__":
     config = get_config()
-    run_async(manage_stops_and_poles(config["DATABASE_PASSWORD"], config["API_KEY"]))
+    run_async(manage_stops_and_poles(config["DATABASE_HOST"], config["DATABASE_PORT"], config["DATABASE_PASSWORD"], config["API_KEY"]))
